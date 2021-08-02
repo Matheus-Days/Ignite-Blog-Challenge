@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { getPrismicClient } from '../services/prismic';
 import Prismic from '@prismicio/client';
 
-import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
 
 import { FiCalendar, FiUser } from 'react-icons/fi';
 
 import { format } from 'date-fns';
 import ptBr from 'date-fns/locale/pt-BR';
+
 import { useState } from 'react';
+import { useRouter } from 'next/router';
+
+import { ExitPreviewButton } from '../components/ExitPreviewButton';
 
 interface Post {
   uid?: string;
@@ -31,9 +34,10 @@ interface PostPagination {
 
 interface HomeProps {
   postsPagination: PostPagination;
+  preview: boolean;
 }
 
-export default function Home({ postsPagination }: HomeProps) {
+export default function Home({ postsPagination, preview }: HomeProps) {
   const [nextPage, setNextPage] = useState(postsPagination.next_page);
   const [posts, setPosts] = useState(postsPagination.results);
 
@@ -73,7 +77,7 @@ export default function Home({ postsPagination }: HomeProps) {
       <main className={styles.container}>
         <div className={styles.posts}>
           {posts.map(post => (
-            <Link key={post.uid} href={`post/${post.uid}`}>
+            <Link key={post.uid} href={`/post/${post.uid}`}>
               <a>
                 <strong>{post.data.title}</strong>
                 <p>{post.data.subtitle}</p>
@@ -102,12 +106,13 @@ export default function Home({ postsPagination }: HomeProps) {
             </button>
           )}
         </div>
+        {preview && <ExitPreviewButton />}
       </main>
     </>
   );
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps = async ({ preview = false }) => {
   const prismic = getPrismicClient();
   const postsResponse = await prismic.query(
     [Prismic.Predicates.at('document.type', 'posts')],
@@ -119,6 +124,7 @@ export const getStaticProps: GetStaticProps = async () => {
         'posts.first_publication_date',
       ],
       pageSize: 2,
+      orderings: '[document.first_publication_date]',
     }
   );
 
@@ -135,6 +141,9 @@ export const getStaticProps: GetStaticProps = async () => {
   });
 
   return {
-    props: { postsPagination: { next_page: postsResponse.next_page, results } },
+    props: {
+      postsPagination: { next_page: postsResponse.next_page, results },
+      preview,
+    },
   };
 };
